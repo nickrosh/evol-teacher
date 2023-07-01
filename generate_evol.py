@@ -9,6 +9,8 @@ from typing import Optional, Sequence, Union
 import openai
 from tqdm import tqdm
 from dotenv import load_dotenv
+from async_api import OpenAIMultiClient
+
 
 
 @dataclasses.dataclass
@@ -67,12 +69,7 @@ def load_instructions(file_path: str):
     return loaded_json
 
 
-def evolve_instruction(
-    instruction: str, 
-    decoding_args: OpenAIDecodingArguments, 
-    model_name="gpt-3.5-turbo"
-) -> str:
-    """Take in an instruction and evolve with a randomly chosen evol method"""
+def evolve_instructions(instructions, api) -> None:
     methods = [
     'Add new constraints and requirements to the original problem, adding approximately 10 additional words.',
     'Replace a commonly used requirement in the programming task with a less common and more specific one.',
@@ -80,43 +77,37 @@ def evolve_instruction(
     'Provide a piece of erroneous code as a reference to increase misdirection.',
     'Propose higher time or space complexity requirements, but please refrain from doing so frequently.'
     ]
-    chosen_method = random.choice(methods)
-    prompt = f"Please increase the difficulty of the given programming test question a bit.\n\nYou can increase the difficulty using, but not limited to, the following methods:\n{chosen_method}\n\n{instruction}"
-    while True:
-        try:
-            completion = openai.ChatCompletion.create(
-                model=model_name,
-                messages=[
-                    {"role": "user", "content": prompt}
-                ],
-                **decoding_args.__dict__
-            )
-            break
-        except openai.error.OpenAIError as e:
-            print(e)
-            time.sleep(2)
-    return completion.choices[0].message.content
+    for task in instructions:
+        chosen_method = random.choice(methods)
+        prompt = f"Please increase the difficulty of the given programming test question a bit.\n\nYou can increase the difficulty using, but not limited to, the following methods:\n{chosen_method}\n\n{task['instruction']}"
+        while True:
+            try:
+                api.request(data={
+                    "messages": [{
+                        "role": "user",
+                        "content": prompt
+                    }]
+                }, metadata={'original_prompt': task['instruction'], 'method': chosen_method})
+                break
+            except openai.error.OpenAIError as e:
+                print(e)
+                time.sleep(2)
 
 
-def generate_response(
-    instruction: str, 
-    decoding_args: OpenAIDecodingArguments, 
-    model_name="gpt-3.5-turbo"
-) -> str:
-    while True:
-        try:
-            response = openai.ChatCompletion.create(
-                model=model_name,
-                messages=[
-                    {"role": "user", "content": instruction}
-                ],
-                **decoding_args.__dict__
-            )
-            break
-        except openai.error.OpenAIError as e:
-            print(e)
-            time.sleep(2)
-    return response.choices[0].message.content
+def generate_responses(instructions, api) -> None:
+    for task in instructions:
+        while True:
+            try:
+                api.request(data={
+                    "messages": [{
+                        "role": "user",
+                        "content": task["instruction"]
+                    }]
+                }, metadata={'prompt': task['instruction']})
+                break
+            except openai.error.OpenAIError as e:
+                print(e)
+                time.sleep(2)
 
 
 def check_instruction(instruction: str) -> bool:
@@ -134,7 +125,6 @@ def check_instruction(instruction: str) -> bool:
     if not instruction[0].isascii():
         return True
     return False
-    
 
 
 def generate_evol_instruct_set(
@@ -144,7 +134,8 @@ def generate_evol_instruct_set(
     temperature=1,
     max_tokens=2048,
     frequency_penalty=0,
-    top_p=0.9
+    top_p=0.9,
+    model_name="gpt-3.5-turbo"
 ):
     load_dotenv(override=True)
     openai.api_key = os.getenv("OPENAI_API_KEY")
@@ -155,31 +146,65 @@ def generate_evol_instruct_set(
         frequency_penalty=frequency_penalty,
         stop=["\n20", "20.", "20."],
     )
+    api = OpenAIMultiClient(endpoint="chats", data_template={"model": model_name, **decoding_args.__dict__})
     
     prev_tasks = load_instructions(seed_tasks_path)
     for evolution in range(1, evolutions+1):
         start_time = time.time()
         print(f'Evolution {evolution}:')
+
+        # 1. Evolving Instructions
+        print("Generating New Instructions")
         new_tasks = []
-        for task in tqdm(prev_tasks):
-            # 1. Generate an evolved instruction for every previous set
-            # 2. Generate the responses to those newly made instructions
-            # 3. Postprocess and remove the bad ones
-            # 4. Save the evolution as a new json and use it for the next iteration
-            new_instruction = evolve_instruction(task["instruction"], decoding_args=decoding_args)
-            if check_instruction(new_instruction):
+        api = OpenAIMultiClient(
+            endpoint="chats",
+            concurrency=50,
+            max_retries=10,
+            wait_interval=2,
+            retry_multiplier=1,
+            retry_max=30,
+            data_template={"model": "gpt-3.5-turbo", **decoding_args.__dict__},
+        )
+        api.run_request_function(evolve_instructions, prev_tasks, api)
+        for _, evolved_response in tqdm(enumerate(api), total=len(prev_tasks)):
+            if check_instruction(
+                evolved_response.response["choices"][0]["message"]["content"]
+            ):
                 continue
-            new_response = generate_response(new_instruction, decoding_args=decoding_args)
-            if check_instruction(new_response):
+            new_tasks.append({"instruction": evolved_response.response["choices"][0]["message"]["content"]})
+        # print("Before we close the API")
+        # api.close()
+        # print("After we close the API")
+
+        # 2. Generating Responses to the New Instructions
+        print("Generating New Responses")
+        new_dataset = []
+        api = OpenAIMultiClient(
+            endpoint="chats",
+            concurrency=50,
+            max_retries=10,
+            wait_interval=2,
+            retry_multiplier=1,
+            retry_max=30,
+            data_template={"model": "gpt-3.5-turbo", **decoding_args.__dict__},
+        )
+        api.run_request_function(generate_responses, new_tasks, api)
+        for _, new_response in tqdm(enumerate(api), total=len(new_tasks)):
+            if check_instruction(
+                new_response.response["choices"][0]["message"]["content"]
+            ):
                 continue
-            new_tasks.append({
-                "instruction": new_instruction,
-                "output": new_response
+            new_dataset.append({
+                "instruction": new_response.metadata["prompt"],
+                "output": new_response.response["choices"][0]["message"]["content"]
             })
+        # api.close()
+
+        # 3. Output Evolution to a JSON file
         output_file = output_dir + "evol-instruct-" + str(evolution) + '.json'
         with open(output_file, "w") as json_file:
-            json.dump(new_tasks, json_file)
-        prev_tasks = new_tasks
+            json.dump(new_dataset, json_file)
+        prev_tasks = new_dataset
         evolution_time = time.time() - start_time
         print(f'Evolution {evolution} complete, took {evolution_time:.2f}s')
 
