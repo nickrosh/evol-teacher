@@ -80,34 +80,22 @@ def evolve_instructions(instructions, api) -> None:
     for task in instructions:
         chosen_method = random.choice(methods)
         prompt = f"Please increase the difficulty of the given programming test question a bit.\n\nYou can increase the difficulty using, but not limited to, the following methods:\n{chosen_method}\n\n{task['instruction']}"
-        while True:
-            try:
-                api.request(data={
-                    "messages": [{
-                        "role": "user",
-                        "content": prompt
-                    }]
-                }, metadata={'original_prompt': task['instruction'], 'method': chosen_method})
-                break
-            except openai.error.OpenAIError as e:
-                print(e)
-                time.sleep(2)
+        api.request(data={
+            "messages": [{
+                "role": "user",
+                "content": prompt
+            }]
+        }, metadata={'original_prompt': task['instruction'], 'method': chosen_method})
 
 
 def generate_responses(instructions, api) -> None:
     for task in instructions:
-        while True:
-            try:
-                api.request(data={
-                    "messages": [{
-                        "role": "user",
-                        "content": task["instruction"]
-                    }]
-                }, metadata={'prompt': task['instruction']})
-                break
-            except openai.error.OpenAIError as e:
-                print(e)
-                time.sleep(2)
+        api.request(data={
+            "messages": [{
+                "role": "user",
+                "content": task["instruction"]
+            }]
+        }, metadata={'prompt': task['instruction']})
 
 
 def check_instruction(instruction: str) -> bool:
