@@ -23,20 +23,35 @@ Write a response that appropriately completes the request.
 ### Response:"""
 
 def load_code_alpaca():
-    """get the 20k examples and load them to our dataset"""
+    """get the 20k examples and load them to our dataset. We need to convert
+    the alpaca Instruction/Input/Output style to Evol-Instruct style. So we
+    just concatenate the Instruction and Input."""
 
 
 def evolve_instructions(initial_data, methods):
-    """for M evolutions, take each instruction and a randomly selected method, and generate a new instruction using the API"""
+    """for M evolutions, take each instruction and a randomly selected method, 
+    and generate a new instruction"""
 
 
-def prune_instructions(instructions):
-    """remove bad results like if the LLM refused the answer the question"""
+def generate_responses(new_instructions):
+    """generate responses for the generated instructions"""
 
 
-def generate_responses(instructions):
-    """Take the instructions we made and generate responses to them using the same API"""
+def eliminate_instructions(instructions):
+    """Elminate Evolutions for the following reasons:
+    
+    1. The evolved instruction does not provide any information gain compared to the
+    original one. You use an LLM to decide this.
 
+    2. The Evolved instruction makes it hard for the LLM to generate a response. They found
+    that when the response contained 'sorry' and is relatively short (i.e. less than 80 words)
+    it often indicates that the LLM struggles to respons to the evolved instruction.
+    
+    3. The response/instruction only contains punctuations or stop words.
+
+    4. The evolved instruction obviously copies some words from the evolving prompt
+    such as 'given prompt', 'rewritten prompt', '#Rewritten prompt#', etc.
+    """
 
 def save_dataset(final_dataset):
     """Save the data to a jsonl or something to then be used for fine tuning"""
