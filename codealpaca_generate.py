@@ -20,6 +20,8 @@ import numpy as np
 import tqdm
 from rouge_score import rouge_scorer
 import utils
+import openai
+from dotenv import load_dotenv
 
 import fire
 
@@ -107,34 +109,42 @@ def find_word_in_string(w, s):
     return re.compile(r"\b({0})\b".format(w), flags=re.IGNORECASE).search(s)
 
 
+def load_instructions(instructions_path: str):
+    """Load in all jsons of instructions and return list"""
+    tasks = [json.loads(l) for l in open(instructions_path, "r")]
+    task_data = [
+        {"instruction": t["instruction"], "input": t["instances"][0]["input"], "output": t["instances"][0]["output"]}
+        for t in tasks
+    ]
+    return task_data
+
+
+def load_generated_tasks(output_dir):
+    os.makedirs(output_dir, exist_ok=True)
+    model_generated_tasks = []
+    if os.path.exists(os.path.join(output_dir, "regen.json")):
+        with open(os.path.join(output_dir, "regen.json")) as json_file:
+            model_generated_tasks = json.load(json_file)
+        print(f"Loaded {len(model_generated_tasks)} machine-generated instructions")
+    return model_generated_tasks
+
+
 def generate_instruction_following_data(
-    output_dir="./",
+    output_dir="./generation/",
     seed_tasks_path="./seed_tasks.jsonl",
-    num_instructions_to_generate=20000,
+    num_instructions_to_generate=20,
     model_name="text-davinci-003",
     num_prompt_instructions=3,
     request_batch_size=5,
     temperature=1.0,
     top_p=1.0,
-    num_cpus=16,
+    num_cpus=12,
 ):
-    seed_tasks = [json.loads(l) for l in open(seed_tasks_path, "r")]
-    seed_instruction_data = [
-        {"instruction": t["instruction"], "input": t["instances"][0]["input"], "output": t["instances"][0]["output"]}
-        for t in seed_tasks
-    ]
+    load_dotenv(override=True)
+    openai.api_key = os.getenv("OPENAI_API_KEY")
+    seed_instruction_data = load_instructions(seed_tasks_path)
     print(f"Loaded {len(seed_instruction_data)} human-written seed instructions")
-
-    os.makedirs(output_dir, exist_ok=True)
-    request_idx = 0
-    # load the LM-generated instructions
-    machine_instruction_data = []
-    if os.path.exists(os.path.join(output_dir, "regen.json")):
-        machine_instruction_data = utils.jload(os.path.join(output_dir, "regen.json"))
-        print(f"Loaded {len(machine_instruction_data)} machine-generated instructions")
-
-    # similarities = {}
-    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
+    machine_instruction_data = load_generated_tasks(output_dir=output_dir)
 
     # now let's generate new instructions!
     progress_bar = tqdm.tqdm(total=num_instructions_to_generate)
@@ -142,20 +152,22 @@ def generate_instruction_following_data(
         progress_bar.update(len(machine_instruction_data))
 
     # first we tokenize all the seed instructions and generated machine instructions
+    scorer = rouge_scorer.RougeScorer(["rougeL"], use_stemmer=False)
     all_instructions = [d["instruction"] for d in seed_instruction_data] + [
         d["instruction"] for d in machine_instruction_data
     ]
     all_instruction_tokens = [scorer._tokenizer.tokenize(inst) for inst in all_instructions]
 
+    request_idx = 0
     while len(machine_instruction_data) < num_instructions_to_generate:
         request_idx += 1
-
         batch_inputs = []
         for _ in range(request_batch_size):
             # only sampling from the seed tasks
             prompt_instructions = random.sample(seed_instruction_data, num_prompt_instructions)
             prompt = encode_prompt(prompt_instructions)
             batch_inputs.append(prompt)
+            
         decoding_args = utils.OpenAIDecodingArguments(
             temperature=temperature,
             n=1,
@@ -163,6 +175,7 @@ def generate_instruction_following_data(
             top_p=top_p,
             stop=["\n20", "20.", "20."],
         )
+
         request_start = time.time()
         print("Calling openai...")
         results = utils.openai_completion(
@@ -174,6 +187,7 @@ def generate_instruction_following_data(
         )
         request_duration = time.time() - request_start
         print(f'request took - {request_duration}')
+
         process_start = time.time()
         instruction_data = []
         for result in results:
@@ -205,6 +219,7 @@ def generate_instruction_following_data(
             all_instruction_tokens.append(new_instruction_tokens)
             progress_bar.update(1)
         process_duration = time.time() - process_start
+
         print(f"Request {request_idx} took {request_duration:.2f}s, processing took {process_duration:.2f}s")
         print(f"Generated {total} instructions, kept {keep} instructions")
         utils.jdump(machine_instruction_data, os.path.join(output_dir, "regen.json"))
