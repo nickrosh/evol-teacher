@@ -74,28 +74,22 @@ class OpenAIMultiClient:
 
     async def _process_payload(self, payload: Payload) -> Payload:
         logger.debug(f"Processing {payload}")
-        while True:
-            try:
-                if self._mock_api:
-                    payload.response = await self._mock_api(payload)
-                elif payload.endpoint == "completions":
-                    payload.response = await openai.Completion.acreate(**payload.data)
-                elif payload.endpoint == "chat.completions" or payload.endpoint == "chats":
-                    payload.response = await openai.ChatCompletion.acreate(**payload.data)
-                elif payload.endpoint == "embeddings":
-                    payload.response = await openai.Embedding.acreate(**payload.data)
-                elif payload.endpoint == "edits":
-                    payload.response = await openai.Edit.acreate(**payload.data)
-                elif payload.endpoint == "images":
-                    payload.response = await openai.Image.acreate(**payload.data)
-                elif payload.endpoint == "fine-tunes":
-                    payload.response = await openai.FineTune.acreate(**payload.data)
-                else:
-                    raise ValueError(f"Unknown endpoint {payload.endpoint}")
-                break
-            except openai.error.OpenAIError as e:
-                logger.warning(e, exc_info=True)
-                time.sleep(2)
+        if self._mock_api:
+            payload.response = await self._mock_api(payload)
+        elif payload.endpoint == "completions":
+            payload.response = await openai.Completion.acreate(**payload.data)
+        elif payload.endpoint == "chat.completions" or payload.endpoint == "chats":
+            payload.response = await openai.ChatCompletion.acreate(**payload.data)
+        elif payload.endpoint == "embeddings":
+            payload.response = await openai.Embedding.acreate(**payload.data)
+        elif payload.endpoint == "edits":
+            payload.response = await openai.Edit.acreate(**payload.data)
+        elif payload.endpoint == "images":
+            payload.response = await openai.Image.acreate(**payload.data)
+        elif payload.endpoint == "fine-tunes":
+            payload.response = await openai.FineTune.acreate(**payload.data)
+        else:
+            raise ValueError(f"Unknown endpoint {payload.endpoint}")
         logger.debug(f"Processed {payload}")
         return payload
 
