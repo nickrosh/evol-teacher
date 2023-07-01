@@ -134,8 +134,6 @@ def generate_evol_instruct_set(
         frequency_penalty=frequency_penalty,
         stop=["\n20", "20.", "20."],
     )
-    api = OpenAIMultiClient(endpoint="chats", data_template={"model": model_name, **decoding_args.__dict__})
-    
     prev_tasks = load_instructions(seed_tasks_path)
     for evolution in range(1, evolutions+1):
         start_time = time.time()
@@ -151,7 +149,7 @@ def generate_evol_instruct_set(
             wait_interval=2,
             retry_multiplier=1,
             retry_max=30,
-            data_template={"model": "gpt-3.5-turbo", **decoding_args.__dict__},
+            data_template={"model": model_name, **decoding_args.__dict__},
         )
         api.run_request_function(evolve_instructions, prev_tasks, api)
         for _, evolved_response in tqdm(enumerate(api), total=len(prev_tasks)):
@@ -174,7 +172,7 @@ def generate_evol_instruct_set(
             wait_interval=2,
             retry_multiplier=1,
             retry_max=30,
-            data_template={"model": "gpt-3.5-turbo", **decoding_args.__dict__},
+            data_template={"model": model_name, **decoding_args.__dict__},
         )
         api.run_request_function(generate_responses, new_tasks, api)
         for _, new_response in tqdm(enumerate(api), total=len(new_tasks)):
@@ -186,7 +184,6 @@ def generate_evol_instruct_set(
                 "instruction": new_response.metadata["prompt"],
                 "output": new_response.response["choices"][0]["message"]["content"]
             })
-        # api.close()
 
         # 3. Output Evolution to a JSON file
         output_file = output_dir + "evol-instruct-" + str(evolution) + '.json'
@@ -195,6 +192,7 @@ def generate_evol_instruct_set(
         prev_tasks = new_dataset
         evolution_time = time.time() - start_time
         print(f'Evolution {evolution} complete, took {evolution_time:.2f}s')
+    api.close()
 
 
 if __name__ == "__main__":
