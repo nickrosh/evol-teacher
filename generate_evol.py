@@ -1,5 +1,6 @@
 import os
 import json
+import glob
 import dataclasses
 import random
 import string
@@ -10,7 +11,6 @@ import openai
 from tqdm import tqdm
 from dotenv import load_dotenv
 from async_api import OpenAIMultiClient
-
 
 
 @dataclasses.dataclass
@@ -62,6 +62,18 @@ def convert_alpaca_to_evol(file_path: str, lines: bool = False):
     return result
 
 
+def merge_evolutions(output_dir: str, output_file: str = "merged_datasets.json"):
+    """merge all jsons currently in the output_dir folder. This should be the
+    evolved datasets and the original dataset. Will deposit the merged dataset 
+    in the same folder"""
+    merged_json = []
+    for json_file in glob.glob(os.path.join(output_dir, "*.json")):
+        with open(json_file, "r") as file:
+            merged_json.extend(json.load(file))
+    with open(os.path.join(output_dir, output_file), "w") as output_file:
+              json.dump(merged_json, output_file)
+
+
 def load_instructions(file_path: str):
     """Load in JSON file in Evol Format"""
     with open(file_path, "r") as json_file:
@@ -79,7 +91,7 @@ def evolve_instructions(instructions, api) -> None:
     ]
     for task in instructions:
         chosen_method = random.choice(methods)
-        prompt = f"Please increase the difficulty of the given programming test question a bit.\n\nYou can increase the difficulty using, but not limited to, the following methods:\n{chosen_method}\n\n{task['instruction']}"
+        prompt = f"Please increase the difficulty of the given programming test question a bit.\n\nYou can increase the difficulty using, but not limited to, the following methods:\n{chosen_method}\n\n#Given Test#\n{task['instruction']}\n\n#Rewritten Test#\n"
         api.request(data={
             "messages": [{
                 "role": "user",
@@ -101,6 +113,14 @@ def generate_responses(instructions, api) -> None:
 def check_instruction(instruction: str) -> bool:
     """Check the generated instruction with several checks. If it returns True,
     then the instruction should be discarded"""
+    # I'm certain there is something here that they didn't mention in the paper.
+    # I decided not to do the LLM original vs New Equality Check. Might try it later
+    
+    # The paper describes 4 situations as failure:
+    # 1. evolved instruction does not provide info gain vs original, check with LLM (not implemented)
+    # 2. Instruction makes it difficult to generate a response. Response contains "sorry" and is short
+    # 3. Response only contains punctuation and stop words
+    # 4. The instruction obviously copies from the generation prompt, containing #Rewritten Prompt#
     #TODO Checking for the "sorry" case of bad responses
     #TODO Check when it simply copies from the previous instruction
     #TODO Check when the generated text only contains stop words
@@ -108,10 +128,11 @@ def check_instruction(instruction: str) -> bool:
         return True
     if len(instruction.split()) <= 3:
         return True
-    if instruction[0] in string.punctuation:
-        return True
     if not instruction[0].isascii():
         return True
+    # HTML and other code starts with punctuation
+    # if instruction[0] in string.punctuation:
+    #     return True
     return False
 
 
@@ -135,8 +156,9 @@ def generate_evol_instruct_set(
         stop=["\n20", "20.", "20."],
     )
     prev_tasks = load_instructions(seed_tasks_path)
+    start_time = time.time()
     for evolution in range(1, evolutions+1):
-        start_time = time.time()
+        evolution_start_time = time.time()
         print(f'Evolution {evolution}:')
 
         # 1. Evolving Instructions
@@ -156,11 +178,10 @@ def generate_evol_instruct_set(
             if check_instruction(
                 evolved_response.response["choices"][0]["message"]["content"]
             ):
+                print('BAD INSTRUCTION:')
+                print(evolved_response.response["choices"][0]["message"]["content"])
                 continue
             new_tasks.append({"instruction": evolved_response.response["choices"][0]["message"]["content"]})
-        # print("Before we close the API")
-        # api.close()
-        # print("After we close the API")
 
         # 2. Generating Responses to the New Instructions
         print("Generating New Responses")
@@ -179,6 +200,8 @@ def generate_evol_instruct_set(
             if check_instruction(
                 new_response.response["choices"][0]["message"]["content"]
             ):
+                print('BAD GENERATION:')
+                print(new_response.response["choices"][0]["message"]["content"])
                 continue
             new_dataset.append({
                 "instruction": new_response.metadata["prompt"],
@@ -190,10 +213,11 @@ def generate_evol_instruct_set(
         with open(output_file, "w") as json_file:
             json.dump(new_dataset, json_file)
         prev_tasks = new_dataset
-        evolution_time = time.time() - start_time
+        evolution_time = time.time() - evolution_start_time
         print(f'Evolution {evolution} complete, took {evolution_time:.2f}s')
-    api.close()
-
+    final_time = time.time() - start_time
+    print(f'All Computation complete, total run took {final_time:.2f}s')
 
 if __name__ == "__main__":
     generate_evol_instruct_set()
+    merge_evolutions(output_dir="./generation/")

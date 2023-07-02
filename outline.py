@@ -6,6 +6,11 @@ You can increase the difficulty using, but not limited to, the following methods
 
 {question}"""
 
+
+prompt = f"Please increase the difficulty of the given programming test question a bit.\n\nYou can increase the difficulty using, but not limited to, the following methods:\n{chosen_method}\n\n{task['instruction']}"
+prompt2 = f"Please increase the difficulty of the given programming test question a bit.\n\nYou can increase the difficulty using, but not limited to, the following methods:\n{chosen_method}\n\n#Given Test#\n{task['instruction']}\n\n#Rewritten Test#\n"
+
+
 methods = [
     'Add new constraints and requirements to the original problem, adding approximately 10 additional words.',
     'Replace a commonly used requirement in the programming task with a less common and more specific one.',

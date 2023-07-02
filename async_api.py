@@ -3,6 +3,7 @@ import asyncio
 from dataclasses import dataclass
 from threading import Thread
 from typing import Any, Optional
+from queue import Empty
 
 from aioprocessing import AioJoinableQueue, AioQueue
 from tenacity import wait_random_exponential, stop_after_attempt, AsyncRetrying, RetryError
@@ -123,12 +124,25 @@ class OpenAIMultiClient:
 
     def close(self):
         try:
+            # print('starting close')
+            # Here I'm trying to flush the queue, I keep getting hangups
+            # try:
+            #     while True:
+            #         self._in_queue.get_nowait()
+            # except Empty:
+            #     pass
+            # Putting in sentinel records "null" to tell the queue
             for i in range(self._concurrency):
                 self._in_queue.put(None)
+            # print('finished iterating through _concurrency and clearing _in_queue')
             self._in_queue.join()
+            # print('joined _in_queue')
             self._out_queue.put(None)
+            # print('clean _out_queue')
             self._loop.call_soon_threadsafe(self._loop.stop)
+            # print('stopped _loop')
             self._event_loop_thread.join()
+            # print('stopped _event_loop_thread, finished close()')
         except Exception as e:
             logger.error(f"Error closing: {e}")
 
