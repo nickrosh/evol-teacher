@@ -26,7 +26,11 @@ class OpenAIDecodingArguments:
     stop: Optional[Sequence[str]] = None
 
 
-def convert_alpaca_to_evol(file_path: str, lines: bool = False):
+def convert_alpaca_to_evol(
+    file_path: str, 
+    lines: bool = False,
+    output_file: str = "converted_alpaca.json"
+):
     """Convert the Instruction/Input/Output format of Alpaca Instruct datasets
     to the Evol-Instruct format of Instruction/Output. Inputs are appended to the
     instructions.
@@ -57,7 +61,7 @@ def convert_alpaca_to_evol(file_path: str, lines: bool = False):
                 "instruction": record["instruction"],
                 "output": record["output"]
             })
-    with open("converted_alpaca.json", "w") as fp:
+    with open(output_file, "w") as fp:
         json.dump(result, fp)
     return result
 
@@ -115,6 +119,8 @@ def check_instruction(instruction: str) -> bool:
     then the instruction should be discarded"""
     # I'm certain there is something here that they didn't mention in the paper.
     # I decided not to do the LLM original vs New Equality Check. Might try it later
+    # Not happy with the post-processing, the paper throws away 10% of instructions in the
+    # first evol, I'm only throwing away 4%, but they look fine on visual inspection
     
     # The paper describes 4 situations as failure:
     # 1. evolved instruction does not provide info gain vs original, check with LLM (not implemented)
@@ -178,8 +184,8 @@ def generate_evol_instruct_set(
             if check_instruction(
                 evolved_response.response["choices"][0]["message"]["content"]
             ):
-                print('BAD INSTRUCTION:')
-                print(evolved_response.response["choices"][0]["message"]["content"])
+                # print('BAD INSTRUCTION:')
+                # print(evolved_response.response["choices"][0]["message"]["content"])
                 continue
             new_tasks.append({"instruction": evolved_response.response["choices"][0]["message"]["content"]})
 
@@ -200,8 +206,8 @@ def generate_evol_instruct_set(
             if check_instruction(
                 new_response.response["choices"][0]["message"]["content"]
             ):
-                print('BAD GENERATION:')
-                print(new_response.response["choices"][0]["message"]["content"])
+                # print('BAD GENERATION:')
+                # print(new_response.response["choices"][0]["message"]["content"])
                 continue
             new_dataset.append({
                 "instruction": new_response.metadata["prompt"],
