@@ -114,7 +114,7 @@ def generate_responses(instructions, api) -> None:
         }, metadata={'prompt': task['instruction']})
 
 
-def check_instruction(instruction: str) -> bool:
+def check_instruction(instruction) -> bool:
     """Check the generated instruction with several checks. If it returns True,
     then the instruction should be discarded"""
     # I'm certain there is something here that they didn't mention in the paper.
@@ -124,16 +124,39 @@ def check_instruction(instruction: str) -> bool:
     # I probably also need to make separate functions for instructions and responses
     
     #TODO
-    # The paper describes 4 situations as failure:
+    # The paper describes 2 situations as instruction failure:
     # 1. evolved instruction does not provide info gain vs original, check with LLM (not implemented)
-    # 2. Instruction makes it difficult to generate a response. Response contains "sorry" and is short
-    # 3. Response only contains punctuation and stop words
-    # 4. The instruction obviously copies from the generation prompt, e.g. containing #Rewritten Prompt#
-    if not instruction:
+    # 2. The instruction obviously copies from the generation prompt, e.g. containing #Rewritten Prompt#
+    content = instruction.response["choices"][0]["message"]["content"]
+    if not content:
         return True
-    if len(instruction.split()) <= 3:
+    if len(content.split()) <= 3:
         return True
-    if not instruction[0].isascii():
+    if not content[0].isascii():
+        return True
+    if instruction.response["usage"]["completion_tokens"] > 1000:
+        return True
+    # HTML and other code starts with punctuation
+    # if instruction[0] in string.punctuation:
+    #     return True
+    return False
+
+
+def check_response(response) -> bool:
+    """Check the generated instruction with several checks. If it returns True,
+    then the instruction should be discarded""" 
+    #TODO
+    # The paper describes 2 situations as response failure:
+    # 1. Instruction makes it difficult to generate a response. Response contains "sorry" and is short
+    # 2. Response only contains punctuation and stop words
+    content = response.response["choices"][0]["message"]["content"]
+    if not content:
+        return True
+    if len(content.split()) <= 3:
+        return True
+    if not content[0].isascii():
+        return True
+    if response.response["usage"]["completion_tokens"] > 1000:
         return True
     # HTML and other code starts with punctuation
     # if instruction[0] in string.punctuation:
@@ -161,6 +184,12 @@ def generate_evol_instruct_set(
     evolutions, each time evolving the previously evolved set."""
     load_dotenv(override=True)
     openai.api_key = os.getenv("OPENAI_API_KEY")
+    # If you are using Azure OAI Service, your rate limits will be much higher
+    if os.getenv("API_TYPE") == "azure":
+        openai.api_type = os.getenv("API_TYPE")
+        openai.api_base = os.getenv("AZURE_API_BASE")
+        openai.api_version = os.getenv("AZURE_API_VERSION")
+        model_name = "gpt-35-turbo" if model_name == "gpt-3.5-turbo" else model_name
     decoding_args = OpenAIDecodingArguments(
         temperature=temperature,
         max_tokens=max_tokens,  # hard-code to maximize the length. the requests will be automatically adjusted
@@ -189,7 +218,7 @@ def generate_evol_instruct_set(
         api.run_request_function(evolve_instructions, prev_tasks, api)
         for _, evolved_response in tqdm(enumerate(api), total=len(prev_tasks)):
             if check_instruction(
-                evolved_response.response["choices"][0]["message"]["content"]
+                evolved_response
             ):
                 # print('BAD INSTRUCTION:')
                 # print(evolved_response.response["choices"][0]["message"]["content"])
@@ -210,8 +239,8 @@ def generate_evol_instruct_set(
         )
         api.run_request_function(generate_responses, new_tasks, api)
         for _, new_response in tqdm(enumerate(api), total=len(new_tasks)):
-            if check_instruction(
-                new_response.response["choices"][0]["message"]["content"]
+            if check_response(
+                new_response
             ):
                 # print('BAD GENERATION:')
                 # print(new_response.response["choices"][0]["message"]["content"])
