@@ -121,15 +121,14 @@ def check_instruction(instruction: str) -> bool:
     # I decided not to do the LLM original vs New Equality Check. Might try it later
     # Not happy with the post-processing, the paper throws away 10% of instructions in the
     # first evol, I'm only throwing away 4%, but they look fine on visual inspection
+    # I probably also need to make separate functions for instructions and responses
     
+    #TODO
     # The paper describes 4 situations as failure:
     # 1. evolved instruction does not provide info gain vs original, check with LLM (not implemented)
     # 2. Instruction makes it difficult to generate a response. Response contains "sorry" and is short
     # 3. Response only contains punctuation and stop words
-    # 4. The instruction obviously copies from the generation prompt, containing #Rewritten Prompt#
-    #TODO Checking for the "sorry" case of bad responses
-    #TODO Check when it simply copies from the previous instruction
-    #TODO Check when the generated text only contains stop words
+    # 4. The instruction obviously copies from the generation prompt, e.g. containing #Rewritten Prompt#
     if not instruction:
         return True
     if len(instruction.split()) <= 3:
@@ -144,14 +143,22 @@ def check_instruction(instruction: str) -> bool:
 
 def generate_evol_instruct_set(
     output_dir="./generation/",
-    seed_tasks_path="./seed_evol.json",
+    seed_tasks_path="./generation/converted_alpaca_2k.json",
     evolutions=3,
     temperature=1,
     max_tokens=2048,
     frequency_penalty=0,
     top_p=0.9,
-    model_name="gpt-3.5-turbo"
+    model_name="gpt-3.5-turbo",
+    api_concurrency=10,
+    max_retries=100,
+    wait_interval=10,
+    retry_multiplier=2,
+    retry_max=30
 ):
+    """Take in seed dataset and Evolve Dataset by creating new instructions for each,
+    and then generate responses for each new instruction. Repeat the process for multiple
+    evolutions, each time evolving the previously evolved set."""
     load_dotenv(override=True)
     openai.api_key = os.getenv("OPENAI_API_KEY")
     decoding_args = OpenAIDecodingArguments(
@@ -172,11 +179,11 @@ def generate_evol_instruct_set(
         new_tasks = []
         api = OpenAIMultiClient(
             endpoint="chats",
-            concurrency=50,
-            max_retries=10,
-            wait_interval=2,
-            retry_multiplier=1,
-            retry_max=30,
+            concurrency=api_concurrency,
+            max_retries=max_retries,
+            wait_interval=wait_interval,
+            retry_multiplier=retry_multiplier,
+            retry_max=retry_max,
             data_template={"model": model_name, **decoding_args.__dict__},
         )
         api.run_request_function(evolve_instructions, prev_tasks, api)
@@ -194,11 +201,11 @@ def generate_evol_instruct_set(
         new_dataset = []
         api = OpenAIMultiClient(
             endpoint="chats",
-            concurrency=50,
-            max_retries=10,
-            wait_interval=2,
-            retry_multiplier=1,
-            retry_max=30,
+            concurrency=api_concurrency,
+            max_retries=max_retries,
+            wait_interval=wait_interval,
+            retry_multiplier=retry_multiplier,
+            retry_max=retry_max,
             data_template={"model": model_name, **decoding_args.__dict__},
         )
         api.run_request_function(generate_responses, new_tasks, api)
@@ -225,5 +232,6 @@ def generate_evol_instruct_set(
     print(f'All Computation complete, total run took {final_time:.2f}s')
 
 if __name__ == "__main__":
+    # convert_alpaca_to_evol(file_path="./data/code_alpaca_2k.json")
     generate_evol_instruct_set()
     merge_evolutions(output_dir="./generation/")
