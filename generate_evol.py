@@ -160,7 +160,13 @@ def generate_evol_instruct_set(
     and then generate responses for each new instruction. Repeat the process for multiple
     evolutions, each time evolving the previously evolved set."""
     load_dotenv(override=True)
+    # Azure has 240k Token per minute limit versus OAI 90k
+    # If you have an Azure OpenAI Subscription, this is ideal
+    openai.api_type = "azure"
     openai.api_key = os.getenv("OPENAI_API_KEY")
+    openai.api_base = os.getenv("AZURE_OAI_BASE")
+    openai.api_version = os.getenv("API_VERSION")
+
     decoding_args = OpenAIDecodingArguments(
         temperature=temperature,
         max_tokens=max_tokens,  # hard-code to maximize the length. the requests will be automatically adjusted
