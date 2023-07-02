@@ -163,6 +163,7 @@ def generate_evol_instruct_set(
     # Azure has 240k Token per minute limit versus OAI 90k
     # If you have an Azure OpenAI Subscription, this is ideal
     openai.api_type = "azure"
+    model_name = "gpt-35-turbo" # Azure doesn't have the period
     openai.api_key = os.getenv("OPENAI_API_KEY")
     openai.api_base = os.getenv("AZURE_OAI_BASE")
     openai.api_version = os.getenv("API_VERSION")
