@@ -1,11 +1,11 @@
 import os
 import json
 import glob
+import logging
 import dataclasses
 import random
-import string
 import time
-from typing import Optional, Sequence, Union
+from typing import Optional, Sequence
 
 import openai
 from tqdm import tqdm
@@ -166,7 +166,7 @@ def check_response(response) -> bool:
 
 def generate_evol_instruct_set(
     output_dir="./generation/",
-    seed_tasks_path="./generation/converted_alpaca_2k.json",
+    seed_tasks_path="./generation/converted_alpaca_20k",
     evolutions=3,
     temperature=1,
     max_tokens=2048,
@@ -183,6 +183,8 @@ def generate_evol_instruct_set(
     and then generate responses for each new instruction. Repeat the process for multiple
     evolutions, each time evolving the previously evolved set."""
     load_dotenv(override=True)
+    logging.basicConfig(filename="app.log", filemode="w", format='%(name)s - %(levelname)s - %(message)s')
+    logger = logging.getLogger(__name__)
     openai.api_key = os.getenv("OPENAI_API_KEY")
     # If you are using Azure OAI Service, your rate limits will be much higher
     if os.getenv("API_TYPE") == "azure":
@@ -197,6 +199,7 @@ def generate_evol_instruct_set(
         frequency_penalty=frequency_penalty,
         stop=["\n20", "20.", "20."],
     )
+
     prev_tasks = load_instructions(seed_tasks_path)
     start_time = time.time()
     for evolution in range(1, evolutions+1):
@@ -220,8 +223,6 @@ def generate_evol_instruct_set(
             if check_instruction(
                 evolved_response
             ):
-                # print('BAD INSTRUCTION:')
-                # print(evolved_response.response["choices"][0]["message"]["content"])
                 continue
             new_tasks.append({"instruction": evolved_response.response["choices"][0]["message"]["content"]})
 
@@ -242,8 +243,6 @@ def generate_evol_instruct_set(
             if check_response(
                 new_response
             ):
-                # print('BAD GENERATION:')
-                # print(new_response.response["choices"][0]["message"]["content"])
                 continue
             new_dataset.append({
                 "instruction": new_response.metadata["prompt"],
