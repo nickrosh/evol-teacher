@@ -1,6 +1,7 @@
 old_gen*/
 nohup.out
 *.ipynb
+shell.sh
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
