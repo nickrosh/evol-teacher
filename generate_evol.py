@@ -125,7 +125,7 @@ def check_instruction(instruction) -> bool:
     
     #TODO
     # The paper describes 2 situations as instruction failure:
-    # 1. evolved instruction does not provide info gain vs original, check with LLM (not implemented)
+    # 1. evolved instruction does not provide info gain vs original, check using LLM (not implemented)
     # 2. The instruction obviously copies from the generation prompt, e.g. containing #Rewritten Prompt#
     content = instruction.response["choices"][0]["message"]["content"]
     if not content:
@@ -134,7 +134,7 @@ def check_instruction(instruction) -> bool:
         return True
     if not content[0].isascii():
         return True
-    if instruction.response["usage"]["completion_tokens"] > 1000:
+    if instruction.response["usage"]["completion_tokens"] >= 1000:
         return True
     # HTML and other code starts with punctuation
     # if instruction[0] in string.punctuation:
@@ -156,7 +156,7 @@ def check_response(response) -> bool:
         return True
     if not content[0].isascii():
         return True
-    if response.response["usage"]["completion_tokens"] > 1000:
+    if response.response["usage"]["total_tokens"] >= 2000:
         return True
     # HTML and other code starts with punctuation
     # if instruction[0] in string.punctuation:
@@ -261,6 +261,6 @@ def generate_evol_instruct_set(
     print(f'All Computation complete, total run took {final_time:.2f}s')
 
 if __name__ == "__main__":
-    # convert_alpaca_to_evol(file_path="./data/code_alpaca_2k.json")
+    # convert_alpaca_to_evol(file_path="./data/code_alpaca_20k.json")
     generate_evol_instruct_set()
     merge_evolutions(output_dir="./generation/")
