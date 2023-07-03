@@ -13,13 +13,13 @@
 #    limitations under the License.
 
 import copy
+import json
 import logging
 from dataclasses import dataclass, field
 from typing import Dict, Optional, Sequence
 
 import torch
 import transformers
-import utils
 from torch.utils.data import Dataset
 from transformers import Trainer
 
@@ -125,7 +125,8 @@ class SupervisedDataset(Dataset):
     def __init__(self, data_path: str, tokenizer: transformers.PreTrainedTokenizer):
         super(SupervisedDataset, self).__init__()
         logging.warning("Loading data...")
-        list_data_dict = utils.jload(data_path)
+        with open(data_path, "r") as json_file:
+            list_data_dict = json.load(json_file)
 
         logging.warning("Formatting inputs...")
         prompt_input, prompt_no_input = PROMPT_DICT["prompt_input"], PROMPT_DICT["prompt_no_input"]

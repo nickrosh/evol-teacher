@@ -10,3 +10,5 @@ einops
 openai
 python-dotenv
 aiohttp
+tenacity
+aioprocessing
