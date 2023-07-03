@@ -29,10 +29,10 @@ DEFAULT_EOS_TOKEN = "<|endoftext|>"
 DEFAULT_UNK_TOKEN = "<|unk|>"
 PROMPT_DICT = {
     "prompt_input": (
-        "### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
+        "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request\n### Instruction:\n{instruction}\n\n### Input:\n{input}\n\n### Response:"
     ),
     "prompt_no_input": (
-        "### Instruction:\n{instruction}\n\n### Response:"
+        "Below is an instruction that describes a task, paired with an input that provides further context. Write a response that appropriately completes the request\n### Instruction:\n{instruction}\n\n### Response:"
     ),
 }
 
@@ -129,11 +129,8 @@ class SupervisedDataset(Dataset):
             list_data_dict = json.load(json_file)
 
         logging.warning("Formatting inputs...")
-        prompt_input, prompt_no_input = PROMPT_DICT["prompt_input"], PROMPT_DICT["prompt_no_input"]
-        sources = [
-            prompt_input.format_map(example) if example.get("input", "") != "" else prompt_no_input.format_map(example)
-            for example in list_data_dict
-        ]
+        prompt_no_input = PROMPT_DICT["prompt_no_input"]
+        sources = [prompt_no_input.format_map(example) for example in list_data_dict]
         targets = [f"{example['output']}{tokenizer.eos_token}" for example in list_data_dict]
 
         logging.warning("Tokenizing inputs... This may take some time...")
