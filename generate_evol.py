@@ -66,7 +66,7 @@ def convert_alpaca_to_evol(
     return result
 
 
-def merge_evolutions(output_dir: str, output_file: str = "merged_datasets.json"):
+def merge_evolutions(output_dir: str = "./generation/", output_file: str = "merged_datasets.json"):
     """merge all jsons currently in the output_dir folder. This should be the
     evolved datasets and the original dataset. Will deposit the merged dataset 
     in the same folder"""
