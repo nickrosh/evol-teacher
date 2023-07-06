@@ -41,3 +41,34 @@ We can instruct-tune a model using this dataset very similarly to Alpaca tuning.
 ## Evaluation
 
 (Still training the model as of 7/5. when it is done, I will post it to HF Hub and run HumanEval)
+
+
+## Citation
+
+
+Thanks to the original WizardCoder team
+```
+@misc{luo2023wizardcoder,
+      title={WizardCoder: Empowering Code Large Language Models with Evol-Instruct}, 
+      author={Ziyang Luo and Can Xu and Pu Zhao and Qingfeng Sun and Xiubo Geng and Wenxiang Hu and Chongyang Tao and Jing Ma and Qingwei Lin and Daxin Jiang},
+      year={2023},
+      eprint={2306.08568},
+      archivePrefix={arXiv},
+      primaryClass={cs.CL}
+}
+```
+
+And thanks to the original Alpaca team.
+```
+@misc{alpaca,
+  author = {Rohan Taori and Ishaan Gulrajani and Tianyi Zhang and Yann Dubois and Xuechen Li and Carlos Guestrin and Percy Liang and Tatsunori B. Hashimoto },
+  title = {Stanford Alpaca: An Instruction-following LLaMA model},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/tatsu-lab/stanford_alpaca}},
+}
+```
+
+Naturally, you should also cite the original LLaMA paper [1] and the Self-Instruct paper [2].
+Also thanks to [Teknium1](https://github.com/teknium1/stanford_alpaca-replit) for the Replit Training Script. I made some changes for the Evolution Instruct format.
