@@ -1,5 +1,43 @@
 # Evol-Teacher
 
-This repo implements the code generation instruction process described in the WizardCoder paper. This process utilizes EvolInstruct iterations first described in the WizardLM paper. WizardCoder is currently the state of the art open source code generation model, and only behind GPT-4 in closed source models.
+This repo implements the code generation instruction process described in the [WizardCoder Paper](https://arxiv.org/pdf/2306.08568.pdf). This takes the Code Alpaca 20k dataset and evolves each instruction through a randomly chosen evolution prompt to increase instruction complexity. This is done three times with pruning and post processing to remove unwanted instructions and 
 
-I was able to create EvolInstruct-Code-8k which was seeded with the Code-Alpaca-2k dataset. The full EvolInstruct-Code-80k as used in the paper is currently being processed.
+`generate_evol.py` allows you to generate an Evolution-Instruct dataset from any instruction dataset in the format `Instruction`/`Response`. Alpaca style datasets that contain `input` fields can be converted to Evolution format with `convert_alpaca_to_evol()`. The high level overview of the evolution process is as follows:
+1. A seed instruction is taken and evolved with a randomly chosen evolution prompt.
+2. Responses are generated to each of these new evolved prompts.
+3. Poor quality instructions and responses are pruned and also prevented from further evolution.
+4. This evolution process repeats M times, in the paper and the default value in this repo, M=3.
+
+As described in the paper, I performed this process on the full 20k Code Alpaca dataset with three evolutions, resulting in a total of 80k instruction-response pairs. Over 120,000 API calls were made to OpenAI to create this dataset, and due to the rate limit, it took around three days to complete.
+
+## Getting the full 80k Datset
+
+I plan on uploading the dataset to HuggingFace soon, but you can easily create the full dataset by running `merge_evolutions(output_dir="./data/EvolInstruct-Code-80k/")` within `generate_evol.py`. This will merge the seed dataset and the three evolutions.
+
+## Fine Tuning
+
+We can instruct-tune a model using this dataset very similarly to Alpaca tuning. Simply run `train.py` with your desired parameters. If you set the model max length to 512, it will have a much smaller memory footprint and you will be able to train faster. I instruct-tuned [ReplitLM](https://github.com/replit/ReplitLM) on the full 80k dataset using the following parameters:
+```bash
+    --model_name_or_path replit/replit-code-v1-3b \
+    --data_path ./data/EvolInstruct-Code-80k/EvolInstruct-Code-80k.json \
+    --output_dir ./checkpoints \
+    --num_train_epochs 3 \
+    --per_device_train_batch_size 1 \
+    --gradient_accumulation_steps 8 \
+    --evaluation_strategy "no" \
+    --save_strategy "steps" \
+    --save_steps 50 \
+    --save_total_limit 2 \
+    --learning_rate 2e-5 \
+    --weight_decay 0. \
+    --warmup_ratio 0.03 \
+    --lr_scheduler_type "cosine" \
+    --logging_steps 1 \
+    --model_max_length 2000 \
+    --bf16 True \
+    --tf32 True
+```
+
+## Evaluation
+
+(Still training the model as of 7/5. when it is done, I will post it to HF Hub and run HumanEval)
