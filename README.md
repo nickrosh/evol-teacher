@@ -70,5 +70,18 @@ And thanks to the original Alpaca team.
 }
 ```
 
+And thanks to sahil280114 for the CodeAlpaca project and seed dataset.
+```
+@misc{codealpaca,
+  author = {Sahil Chaudhary},
+  title = {Code Alpaca: An Instruction-following LLaMA model for code generation},
+  year = {2023},
+  publisher = {GitHub},
+  journal = {GitHub repository},
+  howpublished = {\url{https://github.com/sahil280114/codealpaca}},
+}
+```
+
+
 Naturally, you should also cite the original LLaMA paper [1] and the Self-Instruct paper [2].
-Also thanks to [Teknium1](https://github.com/teknium1/stanford_alpaca-replit) for the Replit Training Script. I made some changes for the Evolution Instruct format.
+Also thanks to [Teknium1](https://github.com/teknium1/stanford_alpaca-replit) for the Replit Training Script. I made some changes for the Evolution Instruct format. And thanks to 
