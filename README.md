@@ -1,16 +1,16 @@
 # Evol-Teacher
 
-This repo implements the code generation instruction process described in the [WizardCoder Paper](https://arxiv.org/pdf/2306.08568.pdf). This takes the Code Alpaca 20k dataset and evolves each instruction through a randomly chosen evolution prompt to increase instruction complexity. This is done three times with pruning and post processing to remove unwanted instructions and 
+This repo implements the code generation instruction process described in the [WizardCoder Paper](https://arxiv.org/pdf/2306.08568.pdf). Currently, WizardCoder is one the most performant Code Generation models, being beaten only by ChatGPT. This takes the Code Alpaca 20k dataset and evolves each instruction through a randomly chosen evolution prompt to increase instruction complexity. These prompts range from increase time/space complexity, to increasing requirements, to adding erroneus code to improve robustness, etc. This is done three times with pruning and post processing to remove unwanted instructions and responses. The iterative addition of more complexity gives higher quality and more in-depth instructions than what is ususally generated in Alpaca methods. This, like in the case of WizardCoder and WizardLM, can lead to strong performance that gets very close to RLHF model performance.
 
 `generate_evol.py` allows you to generate an Evolution-Instruct dataset from any instruction dataset in the format `Instruction`/`Response`. Alpaca style datasets that contain `input` fields can be converted to Evolution format with `convert_alpaca_to_evol()`. The high level overview of the evolution process is as follows:
-1. A seed instruction is taken and evolved with a randomly chosen evolution prompt.
-2. Responses are generated to each of these new evolved prompts.
+1. A seed instruction is taken and evolved with a randomly chosen evolution prompt using GPT3.5.
+2. Responses are generated to each of these new evolved prompts also with GPT3.5.
 3. Poor quality instructions and responses are pruned and also prevented from further evolution.
-4. This evolution process repeats M times, in the paper and the default value in this repo, M=3.
+4. This evolution process repeats M times. In the paper and the default value in this repo, M=3.
 
 As described in the paper, I performed this process on the full 20k Code Alpaca dataset with three evolutions, resulting in a total of 80k instruction-response pairs. Over 120,000 API calls were made to OpenAI to create this dataset, and due to the rate limit, it took around three days to complete.
 
-## Getting the full 80k Datset
+## Getting the full 80k Dataset
 
 I plan on uploading the dataset to HuggingFace soon, but you can easily create the full dataset by running `merge_evolutions(output_dir="./data/EvolInstruct-Code-80k/")` within `generate_evol.py`. This will merge the seed dataset and the three evolutions.
 
