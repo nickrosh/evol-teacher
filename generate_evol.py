@@ -118,10 +118,9 @@ def check_instruction(instruction) -> bool:
     """Check the generated instruction with several checks. If it returns True,
     then the instruction should be discarded"""
     # I'm certain there is something here that they didn't mention in the paper.
-    # I decided not to do the LLM original vs New Equality Check. Might try it later
-    # Not happy with the post-processing, the paper throws away 10% of instructions in the
+    # I decided not to do the LLM original vs New Equality Check. Might try it later.
+    # More could be done here, the paper throws away 10% of instructions in the
     # first evol, I'm only throwing away 4%, but they look fine on visual inspection
-    # I probably also need to make separate functions for instructions and responses
     
     #TODO
     # The paper describes 2 situations as instruction failure:
