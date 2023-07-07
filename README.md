@@ -40,8 +40,40 @@ We can instruct-tune a model using this dataset very similarly to Alpaca tuning.
 
 ## Evaluation
 
-(Still training the model as of 7/5. when it is done, I will post it to HF Hub and run HumanEval)
+When this model is run with Greedy Decoding, it achieves a HumanEval Pass@1 Score of 31.1%. To run HumanEval on this model, follow the package download instructions on the HumanEval repo and then run the following script
 
+```bash
+#!/bin/sh
+model="./checkpoints" # Path to your model
+temp=0.0
+max_len=2048
+pred_num=1
+num_seqs_per_iter=1
+
+output_path=preds/T${temp}_N${pred_num}
+
+mkdir -p ${output_path}
+echo 'Output path: '$output_path
+echo 'Model to eval: '$model
+
+# Default Sampling: temp=0.2, pred_num=200, num_seqs_per_iter=2
+# CUDA_VISIBLE_DEVICES=0 python humaneval_gen.py --model ${model} \
+#       --temperature ${temp} --num_seqs_per_iter ${num_seqs_per_iter} --N ${pred_num} \
+#       --max_len ${max_len} --output_path ${output_path}
+
+# Greedy Decoding: Also set temp=0.0, pred_num=1, and num_seqs_per_iter=1
+CUDA_VISIBLE_DEVICES=0 python humaneval_gen.py --model ${model} \
+      --temperature ${temp} --num_seqs_per_iter ${num_seqs_per_iter} --N ${pred_num} \
+      --max_len ${max_len} --output_path ${output_path} --greedy_decode
+
+output_path=preds/T${temp}_N${pred_num}
+
+echo 'Output path: '$output_path
+python process_humaneval.py --path ${output_path} --out_path ${output_path}.jsonl --add_prompt
+
+evaluate_functional_correctness ${output_path}.jsonl
+```
+Please refer to the WizardCoder repo for an example of how to run HumanEval on multiple GPUs.
 
 ## Citation
 
