@@ -46,25 +46,27 @@ Create a Python script for this problem:
 
 def get_model(
     load_8bit: bool = False,
-    base_model: str = "bigcode/starcoder",
+    base_model: str = "replit/replit-code-v1-3b",
 ):
     assert base_model, (
-        "Please specify a --base_model, e.g. --base_model='bigcode/starcoder'"
+        "Please specify a --base_model, e.g. --base_model='replit/replit-code-v1-3b'"
     )
 
-    tokenizer = AutoTokenizer.from_pretrained(base_model)
+    tokenizer = AutoTokenizer.from_pretrained(base_model, trust_remote_code=True)
     if device == "cuda":
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             load_in_8bit=load_8bit,
             torch_dtype=torch.bfloat16, # Change to float16 if you don't have Ampere or newer GPU
             device_map="auto",
+            trust_remote_code=True
         )
     elif device == "mps":
         model = AutoModelForCausalLM.from_pretrained(
             base_model,
             device_map={"": device},
             torch_dtype=torch.float16,
+            trust_remote_code=True
         )
     model.config.pad_token_id = tokenizer.pad_token_id
 
