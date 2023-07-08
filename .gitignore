@@ -5,7 +5,6 @@ shell.sh
 h100.sh
 params.json
 evol*/
-human_eval.sh
 preds/
 
 # Byte-compiled / optimized / DLL files
