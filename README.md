@@ -1,4 +1,4 @@
-# Evol-Teacher
+# Evol-Teacher: Recreating WizardCoder
 
 This repo implements the code generation instruction process described in the [WizardCoder Paper](https://arxiv.org/pdf/2306.08568.pdf). Currently, WizardCoder is one the most performant Code Generation models, being beaten only by ChatGPT. This takes the Code Alpaca 20k dataset and evolves each instruction through a randomly chosen evolution prompt to increase instruction complexity. These prompts range from increase time/space complexity, to increasing requirements, to adding erroneus code to improve robustness, etc. This is done three times with pruning and post processing to remove unwanted instructions and responses. The iterative addition of more complexity gives higher quality and more in-depth instructions than what is ususally generated in Alpaca methods. This, like in the case of WizardCoder and WizardLM, can lead to strong performance that gets very close to RLHF model performance.
 
@@ -12,7 +12,9 @@ As described in the paper, I performed this process on the full 20k Code Alpaca 
 
 ## Getting the full 80k Dataset
 
-I plan on uploading the dataset to HuggingFace soon, but you can easily create the full dataset by running `merge_evolutions(output_dir="./data/EvolInstruct-Code-80k/")` within `generate_evol.py`. This will merge the seed dataset and the three evolutions.
+The full dataset can be found on [HuggingFace Hub](https://huggingface.co/datasets/nickrosh/Evol-Instruct-Code-80k-v1).
+
+You can also easily recreate the full dataset by running `merge_evolutions(output_dir="./data/EvolInstruct-Code-80k/")` within `generate_evol.py`. This will merge the seed dataset and the three evolutions. The evolutions are saved here separately for later analysis on generational differences.
 
 ## Fine Tuning
 
@@ -37,6 +39,8 @@ We can instruct-tune a model using this dataset very similarly to Alpaca tuning.
     --bf16 True \
     --tf32 True
 ```
+
+The instruction tuned version of the model can be found on [HuggingFace Hub](https://huggingface.co/nickrosh/Evol-Replit-v1)
 
 ## Evaluation
 
