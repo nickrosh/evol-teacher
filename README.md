@@ -44,7 +44,7 @@ The instruction tuned version of the model can be found on [HuggingFace Hub](htt
 
 ## Evaluation
 
-When this model is run with Greedy Decoding, it achieves a HumanEval Pass@1 Score of 31.1%. To run HumanEval on this model, follow the package download instructions on the HumanEval repo and then run the following script
+When this model is run with Greedy Decoding, it achieves a HumanEval Pass@1 Score of 31.1%. To run HumanEval on this model, follow the package download instructions on the HumanEval repo and then run the following script `sh human_eval.sh`.
 
 ```bash
 #!/bin/sh
