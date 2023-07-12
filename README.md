@@ -44,7 +44,7 @@ The instruction tuned version of the model can be found on [HuggingFace Hub](htt
 
 ## Evaluation
 
-When this model is run with Greedy Decoding, it achieves a HumanEval Pass@1 Score of 31.1%. To run HumanEval on this model, follow the package download instructions on the HumanEval repo and then run the following script `sh human_eval.sh`.
+When this model is run with Greedy Decoding, it achieves a HumanEval Pass@1 Score of 31.1%, up from the initial value of 21% for ReplitLM. Note that this is not the same foundational model as the original WizardCoder, which was fine tuned on top of StarCoder, which has a score of 34% out of the box. To run HumanEval on this model, follow the package download instructions on the HumanEval repo and then run the following script `sh human_eval.sh`.
 
 ```bash
 #!/bin/sh
